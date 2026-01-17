@@ -3,124 +3,96 @@ import subprocess
 import time
 import requests
 import socket
-import uuid
 import re
 from colorama import Fore, Style, init
 
-# Initialize Colorama
 init(autoreset=True)
 
-# Styling Constants
 RED = Fore.RED + Style.BRIGHT
 GREEN = Fore.GREEN + Style.BRIGHT
-RESET = Style.RESET_ALL
 
-# Blood Red ASCII Art
 BANNER = f"""{RED}
-⣿⡟⢠⣿⣯⠦⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⠀⠀⠀⠀⠈⠂⠀⠀⠀⠀⠀⠀⠀⠑⠐⠀⠀⠀⠀⠀⠀⠸⡀⠀
-⣿⢇⡿⣭⡦⠗⠁⠄⠂⠀⠀⠀⠀⠀⡠⣰⢀⠀⠀⠀⢰⠋⡆⢀⢠⠀⠀⠀⠀⠀⠐⢆⠀⢂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠂⠀⠁⠀
-⣟⠘⣼⣎⠕⠊⠁⠀⠀⠀⢢⠆⡀⠬⡑⢿⣻⡆⠀⡀⡄⠄⣧⢸⡈⢀⠀⡆⢠⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⡇⠸⡩⡠⡔⢱⢀⠰⣄⠔⠁⣻⣢⢙⣿⣼⣿⣷⠴⠿⣿⡗⣟⣿⡿⣷⣾⣤⣼⣄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠁⠈⠔⢱⢌⢿⢢⠑⠻⣗⠎⣀⣿⣟⢛⣍⣯⣿⣧⣤⣿⣧⣿⣿⣵⣾⣿⣎⡹⠿⣿⣶⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⢾⢱⣷⣷⡢⢾⣷⢯⣽⣽⣿⣿⠿⣿⣛⡿⠯⠿⠿⠿⡿⠿⣿⣿⣿⣿⣿⣿⣽⣟⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⢀⠑⢬⣧⣻⣽⣽⣿⣿⣿⣿⢟⣻⠟⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠛⠿⣽⢿⡙⢿⣿⣿⣇⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠈⠳⢜⢿⣿⣿⢿⣿⣿⡿⣩⠋⠄⠀⠀⠀⠀⠀⣀⣠⣤⣤⣤⣤⣄⡀⠀⠀⠈⠻⣮⡟⠙⠹⣿⣷⡀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⢀⢀⡀⠉⢟⡻⢛⣿⠿⡷⠁⠀⠀⠀⠀⢀⣴⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠹⣿⣷⣦⣱⣿⣿⣄⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠉⠚⣋⠶⣋⡵⢏⣰⠁⠀⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⠀⠀⠀⠈⢿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀
-⠀⠀⠀⢬⣷⣶⣽⣿⣦⡉⢡⠀⠀⠀⠀⠀⣾⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⠀⠀⠀⠀⠹⣿⣿⣿⣿⣿⣿⣷⢄⡀⠀⠀
-⠀⠀⠀⡨⠟⠉⠉⣉⠻⣿⡌⢆⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⠀⠀⠀⠀⠀⢔⣿⣽⣿⣿⣿⣿⣿⣤⠑⢶⡄
-⠀⠀⠐⠁⠀⢠⡪⠒⣚⣻⣶⣄⠳⣠⠀⠀⠈⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠁⠀⠀⠀⠀⠐⣾⣿⣿⣿⣿⣿⣿⣿⣿⣱⣼⣯
-⠀⠀⠀⢀⣔⢡⡴⢛⣳⡼⠿⢿⣧⣬⣑⠤⣀⡀⠉⠻⢿⣿⣿⣿⣿⣿⠟⠋⠀⠀⠀⣀⣀⣤⣾⣿⣿⣿⡿⣿⣿⠿⠿⢿⢿⡿⠠
-⠀⠀⠀⠉⠊⡝⠨⠋⠀⢀⡤⣾⣟⡻⣿⢷⣶⣬⣭⣐⣤⣄⢀⣈⣀⠀⡠⢄⡦⣤⡛⠩⣿⢛⣻⢿⢛⡼⠾⠝⡅⠭⠪⠴⠋⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⢠⠖⢛⢜⡩⠔⠋⣉⢔⠟⢪⡿⣫⠛⢿⣿⣿⡧⠉⣿⠎⠺⣾⠁⠃⣻⠑⠠⠂⠑⢒⢁⠤⠐⡄⠉⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠐⠁⠀⠉⠁⠀⠀⣪⠼⠃⢠⠿⠈⢼⢀⣾⠯⢿⠂⢑⢸⠢⠂⠃⠀⠀⠐⡘⠄⢠⠔⠓⢙⡥⠋⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠀⠀⠀⠉⠀⠀⠇⠀⠃⠀⠘⢀⢉⠁⢀⢀⠀⡀⠀⠀⢔⠺⢽⠪⠈⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠀⠀⡀⢀⡅⠤⠀⠈⢤⠐⠆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡐⠈⠰⠓⢀⠄⠇⠺⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⠀⠀⠀⠁⠀⠀⠀⠴⠠⠀⠂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-                             ZANE WAS HERE 
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡄⠀⠀⠀⠀⣄⠀⠰⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢤⠀⠀⠀⠀⠀⠘⣆⠀⠀⠀⢸⡄⠀⢳⠀⠀⢀⠀⠀⠀⠀⠀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠲⡄⠀⠀⢳⡄⠀⠀⠀⠀⠸⡆⡄⠀⠀⣿⠀⢸⡄⠀⠈⣇⠀⠀⠀⠀⢸⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠳⣄⠙⢆⠀⠀⢿⡄⠀⠀⠀⠀⣧⢸⠀⠀⣿⠀⢸⡇⠀⠀⢸⠈⡆⠀⠀⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣀⣹⣧⣌⣧⣀⣸⣇⢳⡄⠀⠀⣿⢘⡇⢀⣿⠀⣸⢱⡀⠀⢸⠀⣿⠀⠀⢸⡇⠀⢀⠀⠀⠀⡆⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣴⣶⡿⠿⣟⠉⠉⢹⡇⢹⠁⣿⡟⠙⣿⠲⢶⣿⣸⡃⣼⠃⣰⡏⣼⠇⢀⣿⠀⣿⠀⠀⣾⠃⠀⢸⠀⠀⢀⡇⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣾⡿⠟⢋⡁⠠⣄⠘⣷⡀⢸⣿⣸⣤⣿⡇⣰⡿⢠⣿⢣⡟⣽⢿⣶⣿⣴⡿⢀⣼⡏⣸⡏⠀⣸⡿⠀⢀⡏⠀⠀⡼⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⠟⠉⢠⡀⠀⠙⣦⡘⣷⣘⣧⣿⣿⣿⣿⣿⣰⣿⣷⣿⣿⣿⣿⣿⣾⣿⣾⡿⣳⣿⣟⣴⡟⢀⣼⡿⡽⠀⡾⢠⠀⡼⠃⡼⠀⠀⣠⠃⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣶⡿⠛⠁⠀⠀⢀⠙⣮⣷⣽⣧⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣟⣴⣿⢟⡼⣣⠞⣴⣣⡞⢁⡼⠃⢀⡴⠃⠀⣀⡄
+⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⠟⠀⠀⠀⠠⣄⠈⢷⣸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣟⣵⣾⡿⣋⣴⣟⣡⣶⠟⣁⣴⣾⣿⠇
+⠀⠀⠀⠀⠀⠀⢀⣾⡿⠃⠀⠀⣄⠀⢳⣜⣷⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣿⣿⣿⠟⠁⠀
+⠀⠀⠀⠀⠀⢠⣿⠏⠀⢀⠀⢦⡘⢦⣀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠿⠛⠛⢻⣿⣿⣿⠛⠻⠿⠿⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠋⠁⠀⠀⠀
+⠀⠀⠀⠀⣰⡿⠃⠀⠀⢈⢶⣬⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⡖⠒⠚⣿⣿⡿⠀⠀⠀⠀⠀⠀⠈⠉⠉⢛⣿⣿⣿⣿⣿⣿⡿⣿⣿⣯⣅⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⣰⡿⠁⠀⠀⣀⠈⢳⣾⣿⣿⣿⣿⣿⠟⣻⣿⣿⠀⢈⣿⣿⣿⣿⣿⣿⣿⠯⠍⠀⣿⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣿⡿⢶⣄⠉⠛⠇⠀⠀⠀⠀⠀⠀
+⠀⠀⢠⡿⠁⠀⠀⠀⠈⣿⣿⣿⣿⣿⢿⣿⡿⠤⣨⣿⣿⣿⣼⣿⣿⣿⣿⣿⡿⠏⠀⠂⠈⠛⢿⣿⠃⠀⠀⠀⠀⠀⠀⣰⣿⣿⣟⣋⣉⣉⣉⠛⠻⢷⡌⠃⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢀⡾⠁⠀⠀⠀⣠⣾⣿⣿⣿⠟⠁⠘⣿⣶⡧⠖⢸⡿⣿⣿⣿⣿⡿⣿⣿⠗⠀⠀⠈⢿⣦⣾⡟⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⡿⠯⢭⣍⡙⠓⢦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⡼⠀⠀⠀⠀⣴⣿⣿⣿⠟⠀⠀⠀⠀⠹⣿⣥⢖⣠⣤⠟⠉⠛⠛⢻⠁⡀⠀⢀⣸⣷⣠⣿⡟⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣥⣤⣍⡛⠢⣄⠙⠳⣄⠉⢦⡀⠀⠀⠀⠀⠀⠀⠀
+⠰⠁⠀⠀⢀⣾⣿⣿⠟⠁⠀⠀⠀⠀⠀⠀⠈⠻⣾⣽⣷⣖⡆⢀⣠⣸⣤⣿⣆⣈⣿⣿⡿⠋⠀⠀⢀⣠⣾⣿⣿⣿⣿⣭⣛⠻⢶⡀⠉⠳⢌⠳⠀⠈⠳⡄⠁⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⢀⣾⣿⡿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠉⠻⠿⣿⣶⣿⣿⣿⣿⣿⠿⠟⠉⠀⢀⣠⣶⣿⣿⣿⣿⣿⣿⣿⣿⣟⠿⣦⡙⠄⠀⠀⠳⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⢀⣾⣿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠉⠀⠀⠀⣀⣠⣴⣾⣿⣿⣿⣿⣿⣿⡿⢿⣝⡻⣟⢮⢣⠀⠙⣆⠀⠀⠀⠙⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⢀⣾⡟⠁⠀⠀⢀⣠⣴⣶⣶⣶⠷⣷⣶⣶⣶⣶⣦⣤⣤⣤⣴⣶⣶⣶⣿⣿⣿⣿⣿⣿⡻⢿⣿⢶⣍⠻⣝⢷⣌⠻⣮⠋⢧⢧⠀⠘⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⣼⠋⠀⢀⣴⡾⠟⠋⠉⢠⠏⢀⡞⢩⠞⢩⡟⣹⠟⣹⠏⣿⢻⣿⢹⡿⣿⢻⢿⢿⣿⣿⣿⣦⠙⣇⠘⢧⡈⢦⠙⢧⠈⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠐⠃⠀⡴⠋⠁⠀⠀⠀⠀⠀⠀⠈⢠⠏⠀⡞⢠⠃⠀⢿⠀⠋⠘⡇⢸⠇⡏⢸⢸⠀⠹⣇⢳⠙⣧⠘⠀⠀⢳⡘⠆⠈⣧⠈⣇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠁⠀⠈⠀⠀⠀⠇⡼⠀⠀⠏⠼⠀⠀⢻⢸⠄⠘⡆⠀⠀⠀⡇⠀⠀⠸⡄⠘⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠘⠀⠀⠃⠀⠀⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 """
 
-def acquire_wakelock():
-    try:
-        subprocess.run(["termux-wake-lock"], check=True)
-        print(f"{GREEN}[+] SYSTEM WAKE LOCK: ACQUIRED")
-    except Exception:
-        print(f"{RED}[!] WAKE LOCK FAILED: RUN 'pkg install termux-api'")
-
-def get_mac():
-    mac = ':'.join(re.findall('..', '%012x' % uuid.getnode()))
-    return mac.upper()
-
-def check_ports(ip):
-    # Common PT ports: 21(FTP), 22(SSH), 80(HTTP), 443(HTTPS), 3389(RDP)
-    ports = [21, 22, 80, 443, 3389]
-    open_ports = []
-    for port in ports:
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.settimeout(0.3)
-        result = s.connect_ex((ip, port))
-        if result == 0:
-            open_ports.append(str(port))
-        s.close()
-    return ", ".join(open_ports) if open_ports else "NONE"
-
-def get_network_data():
-    hostname = socket.gethostname()
-    # Private IP
+def get_network_info():
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(("8.8.8.8", 80))
-        private_ip = s.getsockname()[0]
+        ip = s.getsockname()[0]
         s.close()
-        status = "ALIVE"
+        # Create subnet range (e.g., 192.168.1.0/24)
+        subnet = '.'.join(ip.split('.')[:-1]) + '.0/24'
+        return ip, subnet
     except:
-        private_ip = "127.0.0.1"
-        status = "DEAD"
+        return "127.0.0.1", None
 
-    # Public IP
-    try:
-        public_ip = requests.get('https://api.ipify.org', timeout=5).text
-    except:
-        public_ip = "OFFLINE"
-
-    return hostname, private_ip, public_ip, status
+def scan_network(subnet):
+    print(f"{RED}[!] SCANNING SUBNET: {subnet}...")
+    # -sn is a ping scan (finds live devices without deep port scanning)
+    cmd = ["nmap", "-sn", subnet]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    # Extract IPs and Hostnames using Regex
+    devices = re.findall(r"Nmap scan report for ([\w\.-]+ )?\(?([\d\.]+)\)?", result.stdout)
+    return devices
 
 def main():
     os.system('clear')
     print(BANNER)
-    
-    # Initialization (Green)
-    acquire_wakelock()
-    mac_addr = get_mac()
-    print(f"{GREEN}[+] HARDWARE ID (MAC): {mac_addr}")
-    print(f"{GREEN}[+] TARGETING LOCALHOST...")
-    print(f"{RED}{'—'*60}")
+    subprocess.run(["termux-wake-lock"])
+    print(f"{GREEN}[+] BACKGROUND WAKE LOCK ACTIVE")
     
     try:
         while True:
-            host, priv, pub, alive = get_network_data()
-            ports = check_ports(priv)
-            timestamp = time.strftime("%H:%M:%S")
+            my_ip, subnet = get_network_info()
+            print(f"\n{RED}{'—'*60}")
+            print(f"{RED}[{time.strftime('%H:%M:%S')}] YOUR IP: {my_ip}")
             
-            # The "Blood Red" Data Stream
-            log_line = (
-                f"{RED}[{timestamp}] {RED}STATUS:{alive} | "
-                f"{RED}HOST:{host} | "
-                f"{RED}PRV:{priv} | "
-                f"{RED}PUB:{pub} | "
-                f"{RED}OPEN:{ports}"
-            )
-            
-            print(log_line)
-            
-            # Save log locally
-            with open("pt_scan.log", "a") as f:
-                f.write(log_line + "\n")
+            if subnet:
+                found_devices = scan_network(subnet)
+                print(f"{GREEN}[+] FOUND {len(found_devices)} DEVICES CONNECTED:")
                 
-            time.sleep(10) # Scanning frequency
+                for host, ip in found_devices:
+                    host_name = host.strip() if host else "Unknown"
+                    color = GREEN if ip == my_ip else RED
+                    print(f"{color}  > {ip} [{host_name}]")
+                    
+                    # Log the findings
+                    with open("network_discovery.log", "a") as f:
+                        f.write(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {ip} ({host_name})\n")
+            else:
+                print(f"{RED}[!] NO LOCAL NETWORK DETECTED")
+
+            print(f"{RED}{'—'*60}")
+            time.sleep(30) # Wait 30 seconds before next discovery
+            
     except KeyboardInterrupt:
-        print(f"\n{RED}[!] KILLING PROCESS... RELEASING WAKE LOCK.")
+        print(f"\n{RED}[!] RELEASING WAKE LOCK...")
         subprocess.run(["termux-wake-unlock"])
 
 if __name__ == "__main__":
